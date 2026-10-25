@@ -1,10 +1,13 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/java:1-21-bullseye",
+  "name": "Gestion de Productos",
+  "image": "mcr.microsoft.com/devcontainers/java:21",
+  "features": {
+    "ghcr.io/devcontainers/features/maven:1": {}
+  },
+  "postCreateCommand": "mvn -q compile",
   "customizations": {
     "vscode": {
-      "extensions": [
-        "vscjava.vscode-java-pack"
-      ]
+      "extensions": ["vscjava.vscode-java-pack"]
     }
   }
 }

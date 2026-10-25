@@ -9,18 +9,13 @@ public class Main {
     public static void main(String[] args) {
         crearTabla();
         Scanner sc = new Scanner(System.in);
-        int op;
+        int op = 0;
 
         do {
-            System.out.println("\n=== SISTEMA DE GESTIÓN DE PRODUCTOS ===");
-            System.out.println("1. Registrar producto (Create)");
-            System.out.println("2. Consultar productos (Read)");
-            System.out.println("3. Actualizar producto (Update)");
-            System.out.println("4. Eliminar producto (Delete)");
-            System.out.println("5. Salir");
+            System.out.println("\n=== MENÚ PRINCIPAL ===");
+            System.out.println("1. Registrar | 2. Consultar | 3. Actualizar | 4. Eliminar | 5. Salir");
             System.out.print("Seleccione una opción: ");
-            op = sc.nextInt();
-            sc.nextLine();
+            try { op = Integer.parseInt(sc.nextLine()); } catch (Exception e) { op = 0; }
 
             switch (op) {
                 case 1 -> registrar(sc);
@@ -36,88 +31,95 @@ public class Main {
         String sql = "CREATE TABLE IF NOT EXISTS productos (" +
                 "codigo TEXT PRIMARY KEY, " +
                 "nombre TEXT NOT NULL, " +
+                "descripcion TEXT, " +
                 "precio REAL NOT NULL, " +
                 "cantidad INTEGER NOT NULL)";
-        try (Connection conn = DriverManager.getConnection(URL);
-             Statement stmt = conn.createStatement()) {
-            stmt.execute(sql);
-        } catch (SQLException e) {
-            System.out.println("Error al crear la tabla: " + e.getMessage());
-        }
+        try (Connection c = DriverManager.getConnection(URL); Statement s = c.createStatement()) {
+            s.execute(sql);
+        } catch (SQLException e) { System.out.println("Error: " + e.getMessage()); }
     }
 
-    // 1. CREATE
     public static void registrar(Scanner sc) {
         System.out.print("Código: "); String cod = sc.nextLine();
         System.out.print("Nombre: "); String nom = sc.nextLine();
-        System.out.print("Precio: "); double pre = sc.nextDouble();
-        System.out.print("Cantidad: "); int cant = sc.nextInt();
-        sc.nextLine();
+        System.out.print("Descripción: "); String desc = sc.nextLine();
+        try {
+            System.out.print("Precio: "); double pre = Double.parseDouble(sc.nextLine());
+            System.out.print("Cantidad: "); int cant = Integer.parseInt(sc.nextLine());
 
-        if (pre < 0 || cant < 0) {
-            System.out.println("Error: No se permiten valores negativos.");
-            return;
-        }
+            if (pre < 0 || cant < 0) { System.out.println("Error: No se permiten valores negativos."); return; }
 
-        // Especificamos las columnas explícitamente para evitar errores de mapeo
-        String sql = "INSERT INTO productos (codigo, nombre, precio, cantidad) VALUES (?, ?, ?, ?)";
-        try (Connection c = DriverManager.getConnection(URL);
-             PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, cod);
-            ps.setString(2, nom);
-            ps.setDouble(3, pre);
-            ps.setInt(4, cant);
-            ps.executeUpdate();
-            System.out.println("¡Producto registrado con éxito!");
+            String sql = "INSERT INTO productos (codigo, nombre, descripcion, precio, cantidad) VALUES (?, ?, ?, ?, ?)";
+            try (Connection c = DriverManager.getConnection(URL); PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, cod);
+                ps.setString(2, nom);
+                ps.setString(3, desc);
+                ps.setDouble(4, pre);
+                ps.setInt(5, cant);
+                ps.executeUpdate();
+                System.out.println("¡Registrado con éxito!");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Error: Debe ingresar valores numéricos válidos en precio y cantidad.");
         } catch (SQLException e) {
             System.out.println("Error al registrar (¿Código repetido?): " + e.getMessage());
         }
     }
 
-    // 2. READ
-// 2. READ (Listar todo o buscar por código)
     public static void listar(Scanner sc) {
-        System.out.print("¿Deseas buscar por código específico? (s/n): ");
-        if (sc.nextLine().equalsIgnoreCase("s")) {
+        System.out.print("¿Buscar por código específico? (s/n): ");
+        String r = sc.nextLine().trim();
+
+        if (r.equalsIgnoreCase("s")) {
             System.out.print("Ingresa el código: "); String cod = sc.nextLine();
             String sql = "SELECT * FROM productos WHERE codigo = ?";
             try (Connection c = DriverManager.getConnection(URL); PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setString(1, cod);
                 ResultSet rs = ps.executeQuery();
                 if (rs.next()) {
-                    System.out.println("Encontrado -> " + rs.getString("codigo") + " | " + rs.getString("nombre") + " | $" + rs.getDouble("precio") + " | Stock: " + rs.getInt("cantidad"));
-                } else { System.out.println("No existe un producto con ese código."); }
+                    System.out.println(rs.getString("codigo") + " | " + rs.getString("nombre") + " | " + rs.getString("descripcion") + " | $" + rs.getDouble("precio") + " | Stock: " + rs.getInt("cantidad"));
+                } else {
+                    System.out.println("No existe un producto con ese código.");
+                }
             } catch (SQLException e) { System.out.println("Error: " + e.getMessage()); }
-        } else {
+        } else if (r.equalsIgnoreCase("n")) {
             String sql = "SELECT * FROM productos";
             try (Connection c = DriverManager.getConnection(URL); Statement s = c.createStatement(); ResultSet rs = s.executeQuery(sql)) {
                 System.out.println("\n--- INVENTARIO ---");
                 while (rs.next()) {
-                    System.out.println("Código: " + rs.getString("codigo") + " | " + rs.getString("nombre") + " | $" + rs.getDouble("precio") + " | Stock: " + rs.getInt("cantidad"));
+                    System.out.println(rs.getString("codigo") + " | " + rs.getString("nombre") + " | " + rs.getString("descripcion") + " | $" + rs.getDouble("precio") + " | Stock: " + rs.getInt("cantidad"));
                 }
             } catch (SQLException e) { System.out.println("Error: " + e.getMessage()); }
+        } else {
+            System.out.println("Opción inválida. Debe ingresar 's' o 'n'.");
         }
     }
-    // 3. UPDATE
+
     public static void actualizar(Scanner sc) {
-        System.out.print("Código del producto a actualizar: "); String cod = sc.nextLine();
-        System.out.print("Nuevo precio: "); double pre = sc.nextDouble();
-        System.out.print("Nueva cantidad: "); int cant = sc.nextInt();
-        sc.nextLine();
+        System.out.print("Código a actualizar: "); String cod = sc.nextLine();
+        System.out.print("Nueva descripción: "); String desc = sc.nextLine();
+        try {
+            System.out.print("Nuevo precio: "); double pre = Double.parseDouble(sc.nextLine());
+            System.out.print("Nueva cantidad: "); int cant = Integer.parseInt(sc.nextLine());
 
-        if (pre < 0 || cant < 0) { System.out.println("Error: Valores no pueden ser negativos."); return; }
+            if (pre < 0 || cant < 0) { System.out.println("Error: Valores no pueden ser negativos."); return; }
 
-        String sql = "UPDATE productos SET precio = ?, cantidad = ? WHERE codigo = ?";
-        try (Connection c = DriverManager.getConnection(URL); PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setDouble(1, pre); ps.setInt(2, cant); ps.setString(3, cod);
-            if (ps.executeUpdate() > 0) System.out.println("¡Actualizado con éxito!");
-            else System.out.println("Producto no encontrado.");
+            String sql = "UPDATE productos SET descripcion = ?, precio = ?, cantidad = ? WHERE codigo = ?";
+            try (Connection c = DriverManager.getConnection(URL); PreparedStatement ps = c.prepareStatement(sql)) {
+                ps.setString(1, desc);
+                ps.setDouble(2, pre);
+                ps.setInt(3, cant);
+                ps.setString(4, cod);
+                if (ps.executeUpdate() > 0) System.out.println("¡Actualizado con éxito!");
+                else System.out.println("Producto no encontrado.");
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Error: Ingrese números válidos.");
         } catch (SQLException e) { System.out.println("Error: " + e.getMessage()); }
     }
 
-    // 4. DELETE
     public static void eliminar(Scanner sc) {
-        System.out.print("Código del producto a eliminar: "); String cod = sc.nextLine();
+        System.out.print("Código a eliminar: "); String cod = sc.nextLine();
         String sql = "DELETE FROM productos WHERE codigo = ?";
         try (Connection c = DriverManager.getConnection(URL); PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setString(1, cod);
