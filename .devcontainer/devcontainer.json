@@ -1,6 +1,6 @@
 {
   "name": "Gestion de Productos",
-  "image": "mcr.microsoft.com/devcontainers/java:21",
+  "image": "mcr.microsoft.com/devcontainers/java:25-bookworm",
   "features": {
     "ghcr.io/devcontainers/features/maven:1": {}
   },
